@@ -1,0 +1,40 @@
+{
+  "name": "@tagify/ez-tags",
+  "version": "1.0.5",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "start": "tsc && node dist/index.js",
+    "prepublishOnly": "npm run build"
+  },
+  "bin": {
+    "@tagify/ez-tags": "./dist/bin/index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "description": "",
+  "dependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/inquirer": "^9.0.7",
+    "glob": "^11.0.1",
+    "inquirer": "^12.3.2",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.10",
+    "typescript": "^5.7.3"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "publishConfig": {
+    "encoding": "utf-8"
+  }
+}
