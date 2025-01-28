@@ -75,62 +75,53 @@ export function processFileContent(
 ): { modifiedContent: string; matches: TranslationMatch[] } {
   let modifiedContent = fileContent;
   const matches: TranslationMatch[] = [];
-  const existingKeys = new Set<string>();
+  const keyNumberMap = new Map<string, number>();
 
-  // First pass: Find all existing keys and track the highest number
+  // First pass: Find all existing keys and track their numbers
   searchPatterns.forEach((pattern) => {
     const patternMatches = [...fileContent.matchAll(pattern)];
     patternMatches.forEach((match) => {
-      const keyMatch = match[0].match(/key="(unique_key_(\d+))"/);
+      const keyMatch = match[0].match(/key="([^"]+)"/);
       if (keyMatch) {
-        existingKeys.add(keyMatch[1]);
-        const keyNumber = parseInt(keyMatch[2], 10);
-        if (keyNumber > globalKeyCounter) {
-          globalKeyCounter = keyNumber;
+        const fullKey = keyMatch[1];
+        const numberedMatch = fullKey.match(/unique_key_(\d+)/);
+        if (numberedMatch) {
+          const keyNum = parseInt(numberedMatch[1], 10);
+          keyNumberMap.set(fullKey, keyNum);
+          if (keyNum > globalKeyCounter) {
+            globalKeyCounter = keyNum;
+          }
         }
+        // Always add to matches, even if not numbered format
+        matches.push({
+          key: fullKey,
+          tag: extractTagName(match[0]),
+          content: extractTagContent(match[0]),
+        });
       }
     });
   });
 
-  // Second pass: Process elements
+  // Second pass: Process elements without keys
   searchPatterns.forEach((pattern) => {
     const patternMatches = [...fileContent.matchAll(pattern)];
-
     patternMatches.forEach((match) => {
       const tagContent = match[0];
-      const existingKeyMatch = tagContent.match(/key="(unique_key_(\d+))"/);
+      if (tagContent.includes('key="')) return;
 
-      // Handle elements with existing keys
-      if (existingKeyMatch) {
-        const [_, existingKey] = existingKeyMatch;
-        const content = extractTagContent(tagContent);
-
-        matches.push({
-          key: existingKey,
-          tag: extractTagName(tagContent),
-          content,
-        });
-        return;
-      }
-
-      // Generate new key for elements without existing keys
       const uniqueKey = generateUniqueKey();
-      const tag = extractTagName(tagContent);
       const content = extractTagContent(tagContent);
-
+      
       if (!content.trim()) return;
 
       modifiedContent = modifiedContent.replace(
         tagContent,
-        tagContent.replace(
-          /<([^\s>]+)(?![^>]*\bkey\b)([^>]*)>/,
-          `<$1 key="${uniqueKey}"$2>`
-        )
+        tagContent.replace(/<([^\s>]+)([^>]*)>/, `<$1 key="${uniqueKey}"$2>`)
       );
 
       matches.push({
         key: uniqueKey,
-        tag,
+        tag: extractTagName(tagContent),
         content,
       });
     });
