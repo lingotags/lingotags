@@ -80,6 +80,11 @@ export function processFileContent(
     const patternMatches = [...fileContent.matchAll(pattern)];
 
     patternMatches.forEach((match) => {
+      // Skip elements that already have a key attribute
+      if (/\skey\s*=\s*["']/.test(match[0])) {
+        return;
+      }
+
       const uniqueKey = generateUniqueKey();
       const tag = extractTagName(match[0]);
       const content = extractTagContent(match[0]);
@@ -87,10 +92,10 @@ export function processFileContent(
       // Skip empty content
       if (!content.trim()) return;
 
-      // Replace match with key in the first tag
+      // Replace match with key in the first tag (only if no existing key)
       modifiedContent = modifiedContent.replace(
         match[0],
-        match[0].replace(/<([^\s>]+)([^>]*)>/, `<$1 key="${uniqueKey}"$2>`)
+        match[0].replace(/<([^\s>]+)(?![^>]*\bkey\b)([^>]*)>/, `<$1 key="${uniqueKey}"$2>`)
       );
 
       matches.push({
