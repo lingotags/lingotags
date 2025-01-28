@@ -13,11 +13,6 @@ export function escapeJson(str: string): string {
 }
 
 export function logVerbose(verbose: boolean, message: string): void {
-  /*
-  • When true, prints additional information during file processing
-  • Helps in debugging and understanding what the script is doing
-  • Example: Shows how many files were found, which files were processed, etc.
-  */
   if (verbose) {
     console.log(message);
   }
@@ -27,7 +22,6 @@ export function writeOutputFile(
   outputFile: string,
   output: Record<string, TranslationMatch[]>
 ): void {
-  // Convert absolute paths to relative paths in the output
   const relativeOutput: Record<string, TranslationMatch[]> = {};
 
   for (const [filePath, matches] of Object.entries(output)) {
@@ -48,9 +42,12 @@ export function generateUniqueKey(): string {
 }
 
 export function extractTagContent(html: string): string {
-  // Remove HTML tags and trim whitespace
   return html
-    .replace(/<[^>]+>/g, "")
+    .replace(/<(\w+)(\s+[^>]*?)?>/g, "<$1>")
+    .replace(/<[^>]+?>(.*?)<\/[^>]+?>/g, "$1")
+    .replace(/<[^>]+?\/?>/g, "")
+    .replace(/{.*?}/g, "")
+    .replace(/<\/?[a-zA-Z0-9-]+(.*?)\/?>/g, "")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -61,12 +58,20 @@ export function extractTagName(html: string): string {
 }
 
 export function getRelativePath(absolutePath: string): string {
-  // Find the 'app' directory in the path and return everything after it
   const appIndex = absolutePath.indexOf("app");
   if (appIndex !== -1) {
     return absolutePath.slice(appIndex).replace(/\\/g, "/");
   }
   return path.basename(absolutePath);
+}
+
+export function shouldProcessElement(rawHtml: string): boolean {
+  const staticContent = extractTagContent(rawHtml);
+  const hasStaticText = staticContent.length > 0;
+
+  const hasJSX = /{.*?}/.test(rawHtml);
+
+  return hasStaticText && (!hasJSX || (hasJSX && staticContent !== ""));
 }
 
 export function processFileContent(
@@ -75,27 +80,66 @@ export function processFileContent(
 ): { modifiedContent: string; matches: TranslationMatch[] } {
   let modifiedContent = fileContent;
   const matches: TranslationMatch[] = [];
+  const keyNumberMap = new Map<string, number>();
 
   searchPatterns.forEach((pattern) => {
     const patternMatches = [...fileContent.matchAll(pattern)];
-
     patternMatches.forEach((match) => {
+      const keyMatch = match[0].match(/key="([^"]+)"/);
+      if (keyMatch) {
+        const fullKey = keyMatch[1];
+        const numberedMatch = fullKey.match(/unique_key_(\d+)/);
+        if (numberedMatch) {
+          const keyNum = parseInt(numberedMatch[1], 10);
+          keyNumberMap.set(fullKey, keyNum);
+          if (keyNum > globalKeyCounter) {
+            globalKeyCounter = keyNum;
+          }
+        }
+
+        const content = extractTagContent(match[0]);
+        matches.push({
+          key: fullKey,
+          tag: extractTagName(match[0]),
+          content,
+        });
+      }
+    });
+  });
+
+  searchPatterns.forEach((pattern) => {
+    const patternMatches = [...fileContent.matchAll(pattern)];
+    patternMatches.forEach((match) => {
+      const tagContent = match[0];
+      if (tagContent.includes('key="')) return;
+
+      if (!shouldProcessElement(tagContent)) return;
+
       const uniqueKey = generateUniqueKey();
-      const tag = extractTagName(match[0]);
-      const content = extractTagContent(match[0]);
+      let content = extractTagContent(tagContent)
+        .replace(/\s{2,}/g, " ")
+        .trim();
 
-      // Skip empty content
-      if (!content.trim()) return;
+      const tagName = extractTagName(tagContent);
+      if (tagName === "button") {
+        const buttonContent = extractTagContent(tagContent);
+        const cleanContent = buttonContent
+          .replace(/>/g, " ")
+          .replace(/{.*?}/g, "")
+          .trim();
+        content = cleanContent || extractTagContent(tagContent);
+      } else {
+        content = extractTagContent(tagContent);
+      }
 
-      // Replace match with key in the first tag
       modifiedContent = modifiedContent.replace(
-        match[0],
-        match[0].replace(/<([^\s>]+)([^>]*)>/, `<$1 key="${uniqueKey}"$2>`)
+        tagContent,
+        tagContent.replace(/<([^\s>]+)([^>]*)>/, `<$1 key="${uniqueKey}"$2>`)
       );
 
       matches.push({
         key: uniqueKey,
-        tag,
+        tag: extractTagName(tagContent),
         content,
       });
     });

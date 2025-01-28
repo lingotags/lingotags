@@ -9,8 +9,8 @@ export interface TranslationMatch {
   key: string;
   tag: string;
   content: string;
+  dynamic?: boolean;
 }
-
 export interface TranslationOutput {
   [filePath: string]: TranslationMatch[];
 }
