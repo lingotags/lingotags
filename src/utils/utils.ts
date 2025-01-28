@@ -13,11 +13,6 @@ export function escapeJson(str: string): string {
 }
 
 export function logVerbose(verbose: boolean, message: string): void {
-  /*
-  • When true, prints additional information during file processing
-  • Helps in debugging and understanding what the script is doing
-  • Example: Shows how many files were found, which files were processed, etc.
-  */
   if (verbose) {
     console.log(message);
   }
@@ -27,7 +22,6 @@ export function writeOutputFile(
   outputFile: string,
   output: Record<string, TranslationMatch[]>
 ): void {
-  // Convert absolute paths to relative paths in the output
   const relativeOutput: Record<string, TranslationMatch[]> = {};
 
   for (const [filePath, matches] of Object.entries(output)) {
@@ -48,9 +42,12 @@ export function generateUniqueKey(): string {
 }
 
 export function extractTagContent(html: string): string {
-  // Remove HTML tags and trim whitespace
   return html
-    .replace(/<[^>]+>/g, "")
+    .replace(/<(\w+)(\s+[^>]*?)?>/g, "<$1>")
+    .replace(/<[^>]+?>(.*?)<\/[^>]+?>/g, "$1")
+    .replace(/<[^>]+?\/?>/g, "")
+    .replace(/{.*?}/g, "")
+    .replace(/<\/?[a-zA-Z0-9-]+(.*?)\/?>/g, "")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -61,12 +58,20 @@ export function extractTagName(html: string): string {
 }
 
 export function getRelativePath(absolutePath: string): string {
-  // Find the 'app' directory in the path and return everything after it
   const appIndex = absolutePath.indexOf("app");
   if (appIndex !== -1) {
     return absolutePath.slice(appIndex).replace(/\\/g, "/");
   }
   return path.basename(absolutePath);
+}
+
+export function shouldProcessElement(rawHtml: string): boolean {
+  const staticContent = extractTagContent(rawHtml);
+  const hasStaticText = staticContent.length > 0;
+
+  const hasJSX = /{.*?}/.test(rawHtml);
+
+  return hasStaticText && (!hasJSX || (hasJSX && staticContent !== ""));
 }
 
 export function processFileContent(
@@ -77,7 +82,6 @@ export function processFileContent(
   const matches: TranslationMatch[] = [];
   const keyNumberMap = new Map<string, number>();
 
-  // First pass: Find all existing keys and track their numbers
   searchPatterns.forEach((pattern) => {
     const patternMatches = [...fileContent.matchAll(pattern)];
     patternMatches.forEach((match) => {
@@ -92,27 +96,41 @@ export function processFileContent(
             globalKeyCounter = keyNum;
           }
         }
-        // Always add to matches, even if not numbered format
+
+        const content = extractTagContent(match[0]);
         matches.push({
           key: fullKey,
           tag: extractTagName(match[0]),
-          content: extractTagContent(match[0]),
+          content,
         });
       }
     });
   });
 
-  // Second pass: Process elements without keys
   searchPatterns.forEach((pattern) => {
     const patternMatches = [...fileContent.matchAll(pattern)];
     patternMatches.forEach((match) => {
       const tagContent = match[0];
       if (tagContent.includes('key="')) return;
 
+      if (!shouldProcessElement(tagContent)) return;
+
       const uniqueKey = generateUniqueKey();
-      const content = extractTagContent(tagContent);
-      
-      if (!content.trim()) return;
+      let content = extractTagContent(tagContent)
+        .replace(/\s{2,}/g, " ")
+        .trim();
+
+      const tagName = extractTagName(tagContent);
+      if (tagName === "button") {
+        const buttonContent = extractTagContent(tagContent);
+        const cleanContent = buttonContent
+          .replace(/>/g, " ")
+          .replace(/{.*?}/g, "")
+          .trim();
+        content = cleanContent || extractTagContent(tagContent);
+      } else {
+        content = extractTagContent(tagContent);
+      }
 
       modifiedContent = modifiedContent.replace(
         tagContent,
