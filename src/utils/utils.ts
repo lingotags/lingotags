@@ -75,27 +75,57 @@ export function processFileContent(
 ): { modifiedContent: string; matches: TranslationMatch[] } {
   let modifiedContent = fileContent;
   const matches: TranslationMatch[] = [];
+  const existingKeys = new Set<string>();
 
+  // First pass: Find all existing keys and track the highest number
+  searchPatterns.forEach((pattern) => {
+    const patternMatches = [...fileContent.matchAll(pattern)];
+    patternMatches.forEach((match) => {
+      const keyMatch = match[0].match(/key="(unique_key_(\d+))"/);
+      if (keyMatch) {
+        existingKeys.add(keyMatch[1]);
+        const keyNumber = parseInt(keyMatch[2], 10);
+        if (keyNumber > globalKeyCounter) {
+          globalKeyCounter = keyNumber;
+        }
+      }
+    });
+  });
+
+  // Second pass: Process elements
   searchPatterns.forEach((pattern) => {
     const patternMatches = [...fileContent.matchAll(pattern)];
 
     patternMatches.forEach((match) => {
-      // Skip elements that already have a key attribute
-      if (/\skey\s*=\s*["']/.test(match[0])) {
+      const tagContent = match[0];
+      const existingKeyMatch = tagContent.match(/key="(unique_key_(\d+))"/);
+
+      // Handle elements with existing keys
+      if (existingKeyMatch) {
+        const [_, existingKey] = existingKeyMatch;
+        const content = extractTagContent(tagContent);
+
+        matches.push({
+          key: existingKey,
+          tag: extractTagName(tagContent),
+          content,
+        });
         return;
       }
 
+      // Generate new key for elements without existing keys
       const uniqueKey = generateUniqueKey();
-      const tag = extractTagName(match[0]);
-      const content = extractTagContent(match[0]);
+      const tag = extractTagName(tagContent);
+      const content = extractTagContent(tagContent);
 
-      // Skip empty content
       if (!content.trim()) return;
 
-      // Replace match with key in the first tag (only if no existing key)
       modifiedContent = modifiedContent.replace(
-        match[0],
-        match[0].replace(/<([^\s>]+)(?![^>]*\bkey\b)([^>]*)>/, `<$1 key="${uniqueKey}"$2>`)
+        tagContent,
+        tagContent.replace(
+          /<([^\s>]+)(?![^>]*\bkey\b)([^>]*)>/,
+          `<$1 key="${uniqueKey}"$2>`
+        )
       );
 
       matches.push({
