@@ -4,6 +4,14 @@ import { TranslationMatch } from "../types/types";
 
 let globalKeyCounter = 0;
 
+export function getGlobalKeyCounter(): number {
+  return globalKeyCounter;
+}
+
+export function setGlobalKeyCounter(value: number): void {
+  globalKeyCounter = value;
+}
+
 export function escapeJson(str: string): string {
   return str
     .replace(/"/g, '\\"')
@@ -77,7 +85,12 @@ export function shouldProcessElement(rawHtml: string): boolean {
 export function processFileContent(
   fileContent: string,
   searchPatterns: RegExp[]
-): { modifiedContent: string; matches: TranslationMatch[] } {
+): {
+  modifiedContent: string;
+  matches: TranslationMatch[];
+  originalContent: string;
+} {
+  const originalContent = fileContent;
   let modifiedContent = fileContent;
   const matches: TranslationMatch[] = [];
   const keyNumberMap = new Map<string, number>();
@@ -145,5 +158,54 @@ export function processFileContent(
     });
   });
 
-  return { modifiedContent, matches };
+  return { modifiedContent, matches, originalContent };
+}
+
+interface ChangeManifest {
+  initialKeyCounter: number;
+  changes: Array<{
+    filePath: string;
+    originalContent: string;
+    modifiedContent: string;
+  }>;
+}
+
+const DEFAULT_MANIFEST = "lingotags-manifest.json";
+
+export function writeManifest(
+  manifestPath: string = DEFAULT_MANIFEST,
+  initialKeyCounter: number,
+  fileChanges: Array<{ filePath: string; original: string; modified: string }>
+): void {
+  const manifest: ChangeManifest = {
+    initialKeyCounter,
+    changes: fileChanges.map(({ filePath, original, modified }) => ({
+      filePath,
+      originalContent: original,
+      modifiedContent: modified,
+    })),
+  };
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), "utf-8");
+}
+
+export function revertFromManifest(
+  manifestPath: string = "lingotags-manifest.json"
+): void {
+  const resolvedPath = path.resolve(process.cwd(), manifestPath);
+  if (!fs.existsSync(resolvedPath)) {
+    throw new Error(`Manifest file not found: ${resolvedPath}`);
+  }
+
+  const manifest: ChangeManifest = JSON.parse(
+    fs.readFileSync(resolvedPath, "utf-8")
+  );
+
+  manifest.changes.forEach(({ filePath, originalContent }) => {
+    if (fs.existsSync(filePath)) {
+      fs.writeFileSync(filePath, originalContent, "utf-8");
+    }
+  });
+
+  setGlobalKeyCounter(manifest.initialKeyCounter);
+  fs.unlinkSync(resolvedPath);
 }

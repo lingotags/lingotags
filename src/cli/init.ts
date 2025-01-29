@@ -40,6 +40,14 @@ export const initConfig = async () => {
       },
       {
         type: "input",
+        name: "manifest",
+        message: "Enter manifest file name for reverts:",
+        default: "lingotags-manifest.json",
+        validate: (input: string) =>
+          input.trim().length > 0 ? true : "manifest file name is required",
+      },
+      {
+        type: "input",
         name: "filePattern",
         message: "Enter file pattern to search:",
         default: "**/*.{html,tsx,jsx}",
