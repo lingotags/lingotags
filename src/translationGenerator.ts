@@ -6,6 +6,7 @@ import { TranslationGeneratorConfig, TranslationOutput } from "./types/types";
 import { searchPatterns } from "./utils/searchPatterns";
 import {
   getGlobalKeyCounter,
+  initializeKeyCounter,
   logVerbose,
   processFileContent,
   setGlobalKeyCounter,
@@ -59,14 +60,15 @@ export async function generateTranslationTags(
     const pattern = finalConfig.filePattern?.replace(/\\/g, "/") || "**/*.html";
     console.log("Search pattern:", pattern);
 
-    const files = await glob(pattern, {
+    const allFiles = await glob(pattern, {
       cwd: searchPath,
       absolute: true,
       windowsPathsNoEscape: true,
     });
 
-    console.log("Found files:", files);
-    logVerbose(finalConfig.verbose, `Found ${files.length} files to process`);
+    initializeKeyCounter(allFiles);
+    const initialKeyCounter = getGlobalKeyCounter();
+    console.log(`🔑 Initialized key counter at: ${initialKeyCounter}`);
 
     const output: TranslationOutput = {};
 
@@ -75,9 +77,8 @@ export async function generateTranslationTags(
       original: string;
       modified: string;
     }> = [];
-    const initialKeyCounter = getGlobalKeyCounter();
 
-    files.forEach((filePath) => {
+    allFiles.forEach((filePath) => {
       try {
         logVerbose(finalConfig.verbose, `🔍 Scanning file: ${filePath}`);
         const fileContent = fs.readFileSync(filePath, "utf-8");
