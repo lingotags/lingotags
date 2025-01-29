@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import fs from "fs";
+import path from "path";
 import { initConfig } from "../cli/init";
 import { generateTranslationTags } from "../translationGenerator";
 import { loadConfig } from "../utils/configUtils";
@@ -11,12 +13,12 @@ const run = async () => {
     console.log("Running command:", command);
 
     switch (command) {
-      case "--version":
-      case "-version":
-      case "-v":
-      case "--v":
-        const packageJson = require("../../package.json");
-        console.log(`v${packageJson.version}`);
+      case "version":
+      case "v":
+        const packagePath = path.join(__dirname, "../../package.json");
+        console.log(`package path: ${packagePath}`);
+        const packageJson = JSON.parse(fs.readFileSync(packagePath, "utf-8"));
+        console.log(`lingotags v${packageJson.version}`);
         break;
       case "init":
         await initConfig();
