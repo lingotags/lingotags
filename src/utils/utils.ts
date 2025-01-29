@@ -45,23 +45,27 @@ export function writeOutputFile(
 }
 
 export function generateUniqueKey(): string {
-  globalKeyCounter++;
-  return `unique_key_${globalKeyCounter}`;
+  return `unique_key_${++globalKeyCounter}`;
 }
 
 export function extractTagContent(html: string): string {
-  return html
-    .replace(/<(\w+)(\s+[^>]*?)?>/g, "<$1>")
-    .replace(/<[^>]+?>(.*?)<\/[^>]+?>/g, "$1")
-    .replace(/<[^>]+?\/?>/g, "")
-    .replace(/{.*?}/g, "")
-    .replace(/<\/?[a-zA-Z0-9-]+(.*?)\/?>/g, "")
-    .replace(/\s+/g, " ")
+  // Remove all JSX expressions first (including nested ones)
+  const withoutJSX = html.replace(/{[^{}]*}/g, "");
+
+  // Remove HTML/JSX tags while preserving text content
+  const withoutTags = withoutJSX.replace(/<[^>]+>/g, "");
+
+  // Clean up residual characters and whitespace
+  return withoutTags
+    .replace(/["']/g, "") // Remove quotes
+    .replace(/\s+/g, " ") // Collapse whitespace
+    .replace(/^ | $/g, "") // Trim edges
     .trim();
 }
 
 export function extractTagName(html: string): string {
-  const match = html.match(/<([a-zA-Z0-9]+)/);
+  // Updated regex to handle JSX tags with namespace prefixes and custom elements
+  const match = html.match(/<([a-zA-Z0-9-_:]+)(\s|>)/);
   return match ? match[1].toLowerCase() : "";
 }
 
@@ -208,4 +212,33 @@ export function revertFromManifest(
 
   setGlobalKeyCounter(manifest.initialKeyCounter);
   fs.unlinkSync(resolvedPath);
+}
+
+export function findMaxExistingKey(content: string): number {
+  const keyRegex = /unique_key_(\d+)/g;
+  let maxKey = 0;
+  let match;
+
+  while ((match = keyRegex.exec(content)) !== null) {
+    const keyNum = parseInt(match[1], 10);
+    if (keyNum > maxKey) maxKey = keyNum;
+  }
+
+  return maxKey;
+}
+
+export function initializeKeyCounter(files: string[]): void {
+  let maxKey = 0;
+
+  files.forEach((filePath) => {
+    try {
+      const content = fs.readFileSync(filePath, "utf-8");
+      const fileMax = findMaxExistingKey(content);
+      if (fileMax > maxKey) maxKey = fileMax;
+    } catch (error) {
+      console.error(`Error reading file ${filePath}: ${error}`);
+    }
+  });
+
+  globalKeyCounter = Math.max(maxKey, 0);
 }
