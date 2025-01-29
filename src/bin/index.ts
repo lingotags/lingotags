@@ -16,7 +16,6 @@ const run = async () => {
       case "version":
       case "v":
         const packagePath = path.join(__dirname, "../../package.json");
-        console.log(`package path: ${packagePath}`);
         const packageJson = JSON.parse(fs.readFileSync(packagePath, "utf-8"));
         console.log(`lingotags v${packageJson.version}`);
         break;
