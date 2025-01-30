@@ -53,6 +53,14 @@ export const initConfig = async () => {
         default: "**/*.{html,tsx,jsx}",
       },
       {
+        type: "input",
+        name: "defaultLanguage",
+        message: "Enter default language code (e.g. en, fr, es):",
+        default: "en",
+        validate: (input: string) =>
+          /^[a-z]{2}$/.test(input) ? true : "Must be 2-letter language code",
+      },
+      {
         type: "confirm",
         name: "verbose",
         message: "Enable verbose logging?",
