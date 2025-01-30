@@ -10,6 +10,7 @@ export const ConfigSchema = z.object({
     .string()
     .min(3, "Output file path is required and must be at least 3 characters"),
   manifest: z.string().optional().describe("Path to manifest file for reverts"),
+  defaultLanguage: z.string().length(2).default("en"),
   filePattern: z.string().optional().default("**/*.{html,tsx,jsx}"),
   verbose: z.boolean().optional().default(false),
 });

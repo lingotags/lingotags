@@ -140,6 +140,37 @@ export async function generateTranslationTags(
       "Translation tags generated successfully. " +
         `Output file: ${finalConfig.outputFile}`
     );
+
+    // After processing all files, create locale file
+    const localesDir = path.join(process.cwd(), "locales");
+    if (!fs.existsSync(localesDir)) {
+      fs.mkdirSync(localesDir, { recursive: true });
+    }
+
+    const langFile = path.join(
+      localesDir,
+      `${config.defaultLanguage || "en"}.json`
+    );
+    const translations: Record<string, string> = {};
+
+    // Flatten all translations into single object
+    Object.values(output).forEach((matches) => {
+      matches.forEach((match) => {
+        translations[match.key] = match.content;
+      });
+    });
+
+    // Write language file only if it doesn't exist
+    if (!fs.existsSync(langFile)) {
+      fs.writeFileSync(
+        langFile,
+        JSON.stringify(translations, null, 2),
+        "utf-8"
+      );
+      console.log(`🌐 Created language file: ${langFile}`);
+    } else if (config.verbose) {
+      console.log(`ℹ️ Language file already exists: ${langFile}`);
+    }
   } catch (error) {
     console.error(
       `🚨 Translation generation failed: ${(error as Error).message}`

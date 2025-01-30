@@ -2,6 +2,7 @@ export interface TranslationGeneratorConfig {
   searchDirectory: string;
   outputFile: string;
   filePattern?: string;
+  defaultLanguage:string;
   verbose?: boolean;
   manifest?: string;
 }

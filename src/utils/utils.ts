@@ -102,7 +102,7 @@ export function processFileContent(
   searchPatterns.forEach((pattern) => {
     const patternMatches = [...fileContent.matchAll(pattern)];
     patternMatches.forEach((match) => {
-      const keyMatch = match[0].match(/key="([^"]+)"/);
+      const keyMatch = match[0].match(/data-i18n-key="([^"]+)"/);
       if (keyMatch) {
         const fullKey = keyMatch[1];
         const numberedMatch = fullKey.match(/unique_key_(\d+)/);
@@ -128,7 +128,7 @@ export function processFileContent(
     const patternMatches = [...fileContent.matchAll(pattern)];
     patternMatches.forEach((match) => {
       const tagContent = match[0];
-      if (tagContent.includes('key="')) return;
+      if (tagContent.includes("data-i18n-key=")) return;
 
       if (!shouldProcessElement(tagContent)) return;
 
@@ -151,7 +151,10 @@ export function processFileContent(
 
       modifiedContent = modifiedContent.replace(
         tagContent,
-        tagContent.replace(/<([^\s>]+)([^>]*)>/, `<$1 key="${uniqueKey}"$2>`)
+        tagContent.replace(
+          /<([^\s>]+)([^>]*)>/,
+          `<$1 data-i18n-key="${uniqueKey}"$2>`
+        )
       );
 
       matches.push({
@@ -228,17 +231,5 @@ export function findMaxExistingKey(content: string): number {
 }
 
 export function initializeKeyCounter(files: string[]): void {
-  let maxKey = 0;
-
-  files.forEach((filePath) => {
-    try {
-      const content = fs.readFileSync(filePath, "utf-8");
-      const fileMax = findMaxExistingKey(content);
-      if (fileMax > maxKey) maxKey = fileMax;
-    } catch (error) {
-      console.error(`Error reading file ${filePath}: ${error}`);
-    }
-  });
-
-  globalKeyCounter = Math.max(maxKey, 0);
+  globalKeyCounter = 0;
 }
