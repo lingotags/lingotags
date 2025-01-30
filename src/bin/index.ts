@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 
+import fs from "fs";
+import path from "path";
 import { initConfig } from "../cli/init";
 import { generateTranslationTags } from "../translationGenerator";
 import { loadConfig } from "../utils/configUtils";
+import { revertFromManifest } from "../utils/utils";
 
 const run = async () => {
   try {
@@ -10,10 +13,11 @@ const run = async () => {
     console.log("Running command:", command);
 
     switch (command) {
-      case "--version":
-      case "-v":
-        const packageJson = require("../../package.json");
-        console.log(`v${packageJson.version}`);
+      case "version":
+      case "v":
+        const packagePath = path.join(__dirname, "../../package.json");
+        const packageJson = JSON.parse(fs.readFileSync(packagePath, "utf-8"));
+        console.log(`lingotags v${packageJson.version}`);
         break;
       case "init":
         await initConfig();
@@ -33,9 +37,9 @@ const run = async () => {
             process.exit(1);
           }
 
-          console.log("Starting translation generation...");
+          console.log("Starting Keys generation...");
           await generateTranslationTags(config);
-          console.log("Translation generation complete");
+          console.log("Keys generation complete");
         } catch (error: any) {
           console.error("Error details:", {
             name: error.name,
@@ -45,15 +49,29 @@ const run = async () => {
           process.exit(1);
         }
         break;
+      case "revert":
+      case "r":
+        try {
+          const config = loadConfig();
+          const manifestPath = process.argv[3] || config.manifest;
+          revertFromManifest(manifestPath);
+          console.log("✅ Successfully reverted changes");
+          process.exit(0);
+        } catch (error: any) {
+          console.error("Revert failed:", error.message);
+          process.exit(1);
+        }
+        break;
       case "help":
       default:
-        console.log(`Usage: translation-tags-generator <command>
+        console.log(`Usage: lingotags <command>
           Commands:
-            init      Create configuration file
-            generate  Run translation tag generation (alias: gen, g)
-            help      Show this help message
+            init        Create configuration file
+            generate    Run translation generation (alias: gen, g)
+            revert      Revert changes from manifest file (alias: r)
+            help        Show this help message
           Options:
-            --version, -v  Show version number`);
+            version,v  Show version number`);
     }
   } catch (error: any) {
     console.error("Unexpected error details:", {

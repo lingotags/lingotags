@@ -9,6 +9,8 @@ export const ConfigSchema = z.object({
   outputFile: z
     .string()
     .min(3, "Output file path is required and must be at least 3 characters"),
+  manifest: z.string().optional().describe("Path to manifest file for reverts"),
+  defaultLanguage: z.string().length(2).default("en"),
   filePattern: z.string().optional().default("**/*.{html,tsx,jsx}"),
   verbose: z.boolean().optional().default(false),
 });
@@ -28,6 +30,20 @@ export const loadConfig = (
   return ConfigSchema.parse(rawConfig);
 };
 
-// Optional: Configuration Validation Function
 export const validateConfig = (config: unknown): TranslationConfig =>
   ConfigSchema.parse(config);
+
+export async function initConfig(): Promise<void> {
+  const configPath = "./config.json";
+
+  const defaultConfig = {
+    searchDirectory: "./",
+    outputFile: "translations.json",
+    filePattern: "**/*.{html,tsx,jsx}",
+    verbose: false,
+    manifest: "lingotags-manifest.json",
+  };
+
+  fs.writeFileSync(configPath, JSON.stringify(defaultConfig, null, 2), "utf-8");
+  console.log("✅ Config file created:", configPath);
+}

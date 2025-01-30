@@ -4,7 +4,15 @@ import path from "path";
 
 import { TranslationGeneratorConfig, TranslationOutput } from "./types/types";
 import { searchPatterns } from "./utils/searchPatterns";
-import { logVerbose, processFileContent, writeOutputFile } from "./utils/utils";
+import {
+  getGlobalKeyCounter,
+  initializeKeyCounter,
+  logVerbose,
+  processFileContent,
+  setGlobalKeyCounter,
+  writeManifest,
+  writeOutputFile,
+} from "./utils/utils";
 
 export async function generateTranslationTags(
   config: TranslationGeneratorConfig
@@ -13,13 +21,16 @@ export async function generateTranslationTags(
     filePattern: "**/*.html",
     verbose: false,
     ...config,
+    manifest: path.resolve(
+      process.cwd(),
+      config.manifest || "lingotags-manifest.json"
+    ),
   };
 
   try {
     const searchPath = path.resolve(process.cwd(), finalConfig.searchDirectory);
     console.log("Resolved search path:", searchPath);
 
-    // Add directory content listing
     console.log("Directory contents:");
     try {
       const contents = fs.readdirSync(searchPath, { recursive: true });
@@ -29,69 +40,141 @@ export async function generateTranslationTags(
     }
 
     if (!fs.existsSync(searchPath)) {
-      throw new Error(`Search directory does not exist: ${searchPath}`);
+      throw new Error(`Target directory not found: ${searchPath}`);
     }
 
-    // Use forward slashes for glob pattern
+    try {
+      const contents = fs.readdirSync(searchPath, { recursive: true });
+      logVerbose(finalConfig.verbose, `📂 Processing directory: ${searchPath}`);
+      logVerbose(
+        finalConfig.verbose,
+        `📄 Found ${contents.length} items: ${contents.join(", ")}`
+      );
+    } catch (error) {
+      console.error(
+        `❌ Error reading directory ${searchPath}: ${(error as Error).message}`
+      );
+      throw error;
+    }
+
     const pattern = finalConfig.filePattern?.replace(/\\/g, "/") || "**/*.html";
     console.log("Search pattern:", pattern);
 
-    // Use process.cwd() as the base for glob
-    const files = await glob(pattern, {
+    const allFiles = await glob(pattern, {
       cwd: searchPath,
       absolute: true,
       windowsPathsNoEscape: true,
     });
 
-    console.log("Found files:", files);
-    logVerbose(finalConfig.verbose, `Found ${files.length} files to process`);
+    initializeKeyCounter(allFiles);
+    const initialKeyCounter = getGlobalKeyCounter();
+    console.log(`🔑 Initialized key counter at: ${initialKeyCounter}`);
 
-    // Process files and collect output
     const output: TranslationOutput = {};
 
-    files.forEach((filePath) => {
+    const fileChanges: Array<{
+      filePath: string;
+      original: string;
+      modified: string;
+    }> = [];
+
+    allFiles.forEach((filePath) => {
       try {
+        logVerbose(finalConfig.verbose, `🔍 Scanning file: ${filePath}`);
         const fileContent = fs.readFileSync(filePath, "utf-8");
-        const { modifiedContent, matches } = processFileContent(
-          fileContent,
-          searchPatterns
+
+        if (!fileContent.trim()) {
+          logVerbose(finalConfig.verbose, `⏩ Skipped empty file: ${filePath}`);
+          return;
+        }
+
+        const { modifiedContent, matches, originalContent } =
+          processFileContent(fileContent, searchPatterns);
+
+        if (matches.length === 0) {
+          logVerbose(
+            finalConfig.verbose,
+            `➖ No tags found in ${path.basename(filePath)}`
+          );
+          return;
+        }
+
+        logVerbose(
+          finalConfig.verbose,
+          `✅ Found ${matches.length} tags in ${path.basename(filePath)}`
         );
 
-        if (matches.length > 0) {
-          output[filePath] = matches;
+        output[filePath] = matches;
+        if (modifiedContent !== originalContent) {
           fs.writeFileSync(filePath, modifiedContent, "utf-8");
           logVerbose(
             finalConfig.verbose,
-            `Processed ${matches.length} tags in ${filePath}`
+            `💾 Saved changes to ${path.basename(filePath)}`
           );
         }
+        fileChanges.push({
+          filePath,
+          original: originalContent,
+          modified: modifiedContent,
+        });
+        logVerbose(
+          finalConfig.verbose,
+          `Processed ${matches.length} tags in ${filePath}`
+        );
+        if (matches.length > getGlobalKeyCounter()) {
+          setGlobalKeyCounter(matches.length);
+        }
       } catch (error) {
-        console.error(`Error processing file ${filePath}:`, error);
+        console.error(
+          `❌ Error processing ${filePath}: ${(error as Error).message}`
+        );
+        throw error;
       }
     });
 
-    // Write output to JSON file
+    writeManifest(finalConfig.manifest, initialKeyCounter, fileChanges);
+    console.log(`📦 Manifest file created: ${finalConfig.manifest}`);
+
     writeOutputFile(finalConfig.outputFile, output);
     console.log(
       "Translation tags generated successfully. " +
         `Output file: ${finalConfig.outputFile}`
     );
+
+    // After processing all files, create locale file
+    const localesDir = path.join(process.cwd(), "locales");
+    if (!fs.existsSync(localesDir)) {
+      fs.mkdirSync(localesDir, { recursive: true });
+    }
+
+    const langFile = path.join(
+      localesDir,
+      `${config.defaultLanguage || "en"}.json`
+    );
+    const translations: Record<string, string> = {};
+
+    // Flatten all translations into single object
+    Object.values(output).forEach((matches) => {
+      matches.forEach((match) => {
+        translations[match.key] = match.content;
+      });
+    });
+
+    // Write language file only if it doesn't exist
+    if (!fs.existsSync(langFile)) {
+      fs.writeFileSync(
+        langFile,
+        JSON.stringify(translations, null, 2),
+        "utf-8"
+      );
+      console.log(`🌐 Created language file: ${langFile}`);
+    } else if (config.verbose) {
+      console.log(`ℹ️ Language file already exists: ${langFile}`);
+    }
   } catch (error) {
-    console.error("Error generating translation tags:", error);
+    console.error(
+      `🚨 Translation generation failed: ${(error as Error).message}`
+    );
     process.exit(1);
   }
-}
-
-// Example usage function
-export async function main() {
-  await generateTranslationTags({
-    searchDirectory: "./about",
-    outputFile: "translation_tags.json",
-    verbose: true,
-  });
-}
-
-// Only run main if this file is being run directly
-if (require.main === module) {
-  main();
 }
