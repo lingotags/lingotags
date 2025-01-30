@@ -34,16 +34,29 @@ pnpm add lingotags
 npx lingotags init
 ```
 
-This creates a `config.json` file with the following structure:
+#### Initialization Process
 
-```json
-{
-  "searchDirectory": "./src",
-  "outputFile": "translations.json",
-  "filePattern": "**/*.{html,tsx,jsx}",
-  "verbose": false
-}
+You'll be guided through these configuration questions:
+
+```bash
+✔ Enter search directory: (./src)
+✔ Enter output file name: (translations.json)
+✔ Enter manifest file name for reverts: (lingotags-manifest.json)
+✔ Enter file pattern to search: (ex: just leave it)
+✔ Enter default language code (ex: en, fr, es): (en)
+✔ Enable verbose logging? (y/N)
+✅ Configuration file created: ./config.json
 ```
+
+**Configuration Options Explained:**
+
+- **Overwrite confirmation**: Replace existing config file
+- **Search directory**: Root directory for file processing
+- **Output file**: Translation mappings storage location
+- **Manifest file**: Stores original state for reverts
+- **File pattern**: Don't touch it please 
+- **Default language**: Base language code for translations
+- **Verbose logging**: Detailed process output
 
 ### 2. Generate Translation Tags
 
@@ -60,7 +73,9 @@ npx lingotags g
 | ----------------- | --------- | ----------------------------------- | --------------------- |
 | `searchDirectory` | `string`  | Root directory to search for files  | **Required**          |
 | `outputFile`      | `string`  | Path for generated translation JSON | **Required**          |
+| `manifest`        | `string`  | Path to the manifest file           | `manifest.json`       |
 | `filePattern`     | `string`  | Glob pattern for file selection     | `**/*.{html,tsx,jsx}` |
+| `defaultLanguage` | `string`  | Default language for translations   | `en`                  |
 | `verbose`         | `boolean` | Enable detailed logging             | `false`               |
 
 ## Output Format
@@ -125,8 +140,8 @@ function Welcome() {
 function Welcome() {
   return (
     <div>
-      <h1 key="unique_key_1">Welcome to our store</h1>
-      <p key="unique_key_2">The best eco-friendly products</p>
+      <h1 data-i18n-key="unique_key_1">Welcome to our store</h1>
+      <p data-i18n-key="unique_key_2">The best eco-friendly products</p>
     </div>
   );
 }
@@ -140,15 +155,20 @@ npx lingotags init
 
 # Generate translations
 npx lingotags generate
-# Or use shorthand
 npx lingotags gen
 npx lingotags g
 
+# Revert the generated keys
+
+npx lingotags revert
+npx lingotags r
+
 # Show version
-npx lingotags --version
+npx lingotags version
+npx lingotags v
 
 # Display help
-npx lingotags --help
+npx lingotags help
 ```
 
 ## Contributing
@@ -167,11 +187,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 Please use the [GitHub Issues](https://github.com/imadselka/lingotags/issues) page to report any bugs or file feature requests.
 
-## Contact
-
-- GitHub: [@imadselka](https://github.com/imadselka)
-- [@mohsenGhalem](https://github.com/mohsenGhalem)
-
 ## Documentation
 
-For more detailed documentation, examples, and guides, visit our [documentation site](https://github.com/imadselka/lingotags).
+For more detailed documentation, examples, and guides, visit our [documentation site](https://lingotags.vercel.app).
