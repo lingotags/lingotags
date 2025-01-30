@@ -71,7 +71,7 @@ const run = async () => {
             revert      Revert changes from manifest file (alias: r)
             help        Show this help message
           Options:
-            --version,-version,--v, -v  Show version number`);
+            version,v  Show version number`);
     }
   } catch (error: any) {
     console.error("Unexpected error details:", {
