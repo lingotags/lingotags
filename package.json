@@ -1,6 +1,6 @@
 {
   "name": "lingotags",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
@@ -12,7 +12,15 @@
   "bin": {
     "lingotags": "./dist/bin/index.js"
   },
-  "keywords": [],
+  "keywords": [
+    "translations",
+    "i18n",
+    "localization",
+    "json",
+    "keys",
+    "translation-keys",
+    "localization-tool"
+  ],
   "author": "",
   "license": "MIT",
   "description": "",
@@ -42,5 +50,6 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/lingotags/lingotags.git"
-  }
+  },
+  "homepage": "https://lingotags.vercel.app/"
 }

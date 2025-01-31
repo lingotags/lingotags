@@ -5,6 +5,32 @@
 
 A powerful TypeScript utility for automatically generating translation keys in HTML and component files across your project. Perfect for internationalizing React, Next.js, and other web applications.
 
+## Table of Contents
+
+- [Translation Tag Generator 🌍](#translation-tag-generator-)
+  - [Table of Contents](#table-of-contents)
+  - [Features](#features)
+  - [Installation](#installation)
+  - [Quick Start](#quick-start)
+    - [1. Initialize Configuration](#1-initialize-configuration)
+      - [Initialization Process](#initialization-process)
+    - [2. Generate Translation Tags](#2-generate-translation-tags)
+  - [Configuration Options](#configuration-options)
+  - [Output Format](#output-format)
+  - [Supported Elements](#supported-elements)
+    - [HTML Elements](#html-elements)
+    - [UI Components](#ui-components)
+  - [Example Usage](#example-usage)
+    - [Before:](#before)
+    - [After:](#after)
+  - [Navbar Integration](#navbar-integration)
+    - [Translation Utility](#translation-utility)
+    - [Navbar Component](#navbar-component)
+  - [CLI Commands](#cli-commands)
+  - [License](#license)
+  - [Bug Reports](#bug-reports)
+  - [Documentation](#documentation)
+
 ## Features
 
 - Automatically detect translatable content in HTML/component files
@@ -42,21 +68,11 @@ You'll be guided through these configuration questions:
 ✔ Enter search directory: (./src)
 ✔ Enter output file name: (translations.json)
 ✔ Enter manifest file name for reverts: (lingotags-manifest.json)
-✔ Enter file pattern to search: (ex: just leave it)
+✔ Enter file pattern to search: (**/*.{html,tsx,jsx})
 ✔ Enter default language code (ex: en, fr, es): (en)
 ✔ Enable verbose logging? (y/N)
 ✅ Configuration file created: ./config.json
 ```
-
-**Configuration Options Explained:**
-
-- **Overwrite confirmation**: Replace existing config file
-- **Search directory**: Root directory for file processing
-- **Output file**: Translation mappings storage location
-- **Manifest file**: Stores original state for reverts
-- **File pattern**: Don't touch it please 
-- **Default language**: Base language code for translations
-- **Verbose logging**: Detailed process output
 
 ### 2. Generate Translation Tags
 
@@ -103,17 +119,9 @@ The generator creates a `translations.json` file with the following structure:
 
 ### HTML Elements
 
-- Typography
-  - `h1` to `h6` headings
-  - `p` paragraphs
-  - `span` elements
-- Interactive Elements
-  - `button`
-  - `a` links
-- Form Elements
-  - `label`
-  - `input` (placeholder text)
-  - `textarea`
+- Typography: `h1` to `h6`, `p`, `span`
+- Interactive Elements: `button`, `a`
+- Form Elements: `label`, `input` (placeholder), `textarea`
 
 ### UI Components
 
@@ -124,6 +132,7 @@ The generator creates a `translations.json` file with the following structure:
 ### Before:
 
 ```tsx
+// app/page.tsx
 function Welcome() {
   return (
     <div>
@@ -137,6 +146,7 @@ function Welcome() {
 ### After:
 
 ```tsx
+// app/page.tsx
 function Welcome() {
   return (
     <div>
@@ -147,46 +157,111 @@ function Welcome() {
 }
 ```
 
+## Navbar Integration
+
+### Translation Utility
+
+```typescript
+// utils/translation.ts
+export function getStoredLanguage() {
+  return typeof window === "undefined"
+    ? "en"
+    : localStorage.getItem("selectedLanguage") || "en";
+}
+
+export async function applyTranslations(lang: string) {
+  try {
+    localStorage.setItem("selectedLanguage", lang);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const response = await fetch(`/locales/${lang}.json`);
+    const translations = await response.json();
+    document.querySelectorAll("[data-i18n-key]").forEach((el) => {
+      const key = el.getAttribute("data-i18n-key");
+      if (key && translations[key]) {
+        el.textContent = translations[key];
+      }
+    });
+  } catch (error) {
+    console.error("Translation error:", error);
+  }
+}
+```
+
+### Navbar Component
+
+```tsx
+// components/navbar.tsx
+"use client";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { applyTranslations, getStoredLanguage } from "@/lib/translation";
+import { useEffect, useState } from "react";
+
+export function Navbar() {
+  const [language, setLanguage] = useState("en");
+
+  useEffect(() => {
+    const storedLang = getStoredLanguage();
+    setLanguage(storedLang);
+    applyTranslations(storedLang);
+  }, []);
+
+  const languages = ["en", "ar", "de", "fr"];
+
+  return (
+    <nav>
+      <Select
+        value={language}
+        onValueChange={async (value) => {
+          setLanguage(value);
+          await applyTranslations(value);
+        }}
+      >
+        <SelectTrigger>
+          <SelectValue placeholder="Language" />
+        </SelectTrigger>
+        <SelectContent>
+          {languages.map((lang) => (
+            <SelectItem key={lang} value={lang}>
+              {lang.toUpperCase()}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </nav>
+  );
+}
+```
+
 ## CLI Commands
 
 ```bash
-# Initialize new configuration
 npx lingotags init
 
-# Generate translations
 npx lingotags generate
-npx lingotags gen
+npx lingotags gene
 npx lingotags g
-
-# Revert the generated keys
 
 npx lingotags revert
 npx lingotags r
 
-# Show version
 npx lingotags version
-npx lingotags v
-
-# Display help
 npx lingotags help
 ```
 
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](LICENSE)
 
 ## Bug Reports
 
-Please use the [GitHub Issues](https://github.com/imadselka/lingotags/issues) page to report any bugs or file feature requests.
+Report issues on [GitHub](https://github.com/imadselka/lingotags/issues)
 
 ## Documentation
 
-For more detailed documentation, examples, and guides, visit our [documentation site](https://lingotags.vercel.app).
+Visit our [documentation site](https://lingotags.vercel.app).
