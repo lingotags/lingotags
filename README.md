@@ -22,7 +22,7 @@ A powerful TypeScript utility for automatically generating translation keys in H
     - [UI Components](#ui-components)
   - [Example Usage](#example-usage)
     - [Before:](#before)
-    - [After:](#after)
+    - [After with t() function:](#after-with-t-function)
   - [Navbar Integration](#navbar-integration)
     - [Translation Utility](#translation-utility)
     - [Navbar Component](#navbar-component)
@@ -144,15 +144,19 @@ function Welcome() {
 }
 ```
 
-### After:
+### After with t() function:
 
 ```tsx
 // app/page.tsx
+import { useTranslation } from 'react-i18next'; // or your preferred i18n library
+
 function Welcome() {
+  const { t } = useTranslation();
+  
   return (
     <div>
-      <h1 data-i18n-key="unique_key_1">Welcome to our store</h1>
-      <p data-i18n-key="unique_key_2">The best eco-friendly products</p>
+      <h1>{t('unique_key_1')}</h1>
+      <p>{t('unique_key_2')}</p>
     </div>
   );
 }
@@ -266,52 +270,3 @@ Report issues on [GitHub](https://github.com/imadselka/lingotags/issues)
 ## Documentation
 
 Visit our [documentation site](https://lingotags.vercel.app).
-
-## Updated Usage - React components with t() function
-
-LingoTags now supports modern translation approaches using the t() function commonly found in i18n libraries like react-i18next, next-i18next, or next-intl.
-
-### Usage with t() function
-
-1. Run the tool to extract translatable strings from your components:
-
-```bash
-npx lingotags --search "./app" --output "./translations.json" --language "en"
-```
-
-2. LingoTags will:
-   - Find translatable text in your components
-   - Replace static text with `{t('unique_key_X')}` function calls
-   - Generate translation files in the `locales` directory
-
-3. Use the translations in your components with your preferred i18n library:
-
-```jsx
-// Example with react-i18next
-import { useTranslation } from 'react-i18next';
-
-function MyComponent() {
-  const { t } = useTranslation();
-  
-  return (
-    <div>
-      <h1>{t('unique_key_1')}</h1>
-      <p>{t('unique_key_2')}</p>
-    </div>
-  );
-}
-```
-
-### Translation files
-
-The translation files are created in the `locales` directory:
-
-```json
-// locales/en.json
-{
-  "unique_key_1": "Welcome to our store",
-  "unique_key_2": "The best eco-friendly products"
-}
-```
-
-Add additional language files by copying the default language file and translating the values.
