@@ -99,6 +99,7 @@ export function processFileContent(
   const matches: TranslationMatch[] = [];
   const keyNumberMap = new Map<string, number>();
 
+  // First pass: Find existing keys (for backward compatibility)
   searchPatterns.forEach((pattern) => {
     const patternMatches = [...fileContent.matchAll(pattern)];
     patternMatches.forEach((match) => {
@@ -124,11 +125,14 @@ export function processFileContent(
     });
   });
 
+  // Second pass: Process tags that don't already have translation keys
   searchPatterns.forEach((pattern) => {
     const patternMatches = [...fileContent.matchAll(pattern)];
     patternMatches.forEach((match) => {
       const tagContent = match[0];
-      if (tagContent.includes("data-i18n-key=")) return;
+      
+      // Skip if this already has a data-i18n-key or t() function
+      if (tagContent.includes("data-i18n-key=") || tagContent.includes("{t(")) return;
 
       if (!shouldProcessElement(tagContent)) return;
 
@@ -149,19 +153,26 @@ export function processFileContent(
         content = extractTagContent(tagContent);
       }
 
-      modifiedContent = modifiedContent.replace(
-        tagContent,
-        tagContent.replace(
-          /<([^\s>]+)([^>]*)>/,
-          `<$1 data-i18n-key="${uniqueKey}"$2>`
-        )
-      );
-
-      matches.push({
-        key: uniqueKey,
-        tag: extractTagName(tagContent),
-        content,
-      });
+      // Extract the inner text part
+      const innerTextMatch = tagContent.match(/<[^>]*>([\s\S]*?)<\/[^>]*>/);
+      
+      if (innerTextMatch && innerTextMatch[1]) {
+        // Replace the inner text with t() function call
+        const innerText = innerTextMatch[1].trim();
+        if (innerText) {
+          const replacement = tagContent.replace(
+            innerText,
+            `{t('${uniqueKey}')}`
+          );
+          modifiedContent = modifiedContent.replace(tagContent, replacement);
+          
+          matches.push({
+            key: uniqueKey,
+            tag: extractTagName(tagContent),
+            content,
+          });
+        }
+      }
     });
   });
 
@@ -232,4 +243,48 @@ export function findMaxExistingKey(content: string): number {
 
 export function initializeKeyCounter(files: string[]): void {
   globalKeyCounter = 0;
+}
+
+export function importTranslations(localeFile: string): Record<string, string> {
+  try {
+    if (fs.existsSync(localeFile)) {
+      const content = fs.readFileSync(localeFile, 'utf-8');
+      return JSON.parse(content);
+    }
+  } catch (error) {
+    console.error(`Error importing translations: ${(error as Error).message}`);
+  }
+  return {};
+}
+
+export function exportTranslations(
+  localeFile: string, 
+  translations: Record<string, string>,
+  merge: boolean = true
+): void {
+  try {
+    const localeDir = path.dirname(localeFile);
+    if (!fs.existsSync(localeDir)) {
+      fs.mkdirSync(localeDir, { recursive: true });
+    }
+    
+    let finalTranslations = translations;
+    
+    // If merge is true and the file exists, merge with existing translations
+    if (merge && fs.existsSync(localeFile)) {
+      const existingTranslations = importTranslations(localeFile);
+      finalTranslations = {
+        ...existingTranslations,
+        ...translations,
+      };
+    }
+    
+    fs.writeFileSync(
+      localeFile, 
+      JSON.stringify(finalTranslations, null, 2),
+      'utf-8'
+    );
+  } catch (error) {
+    console.error(`Error exporting translations: ${(error as Error).message}`);
+  }
 }
