@@ -14,6 +14,7 @@ export interface TranslationMatch {
   dynamic?: boolean;
   manifest?: string; 
 }
+
 export interface TranslationOutput {
   [filePath: string]: TranslationMatch[];
 }

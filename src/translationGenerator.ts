@@ -5,6 +5,7 @@ import path from "path";
 import { TranslationGeneratorConfig, TranslationOutput } from "./types/types";
 import { searchPatterns } from "./utils/searchPatterns";
 import {
+  exportTranslations,
   getGlobalKeyCounter,
   initializeKeyCounter,
   logVerbose,
@@ -18,7 +19,7 @@ export async function generateTranslationTags(
   config: TranslationGeneratorConfig
 ): Promise<void> {
   const finalConfig = {
-    filePattern: "**/*.html",
+    filePattern: "**/*.{html,tsx,jsx,js,ts}",
     verbose: false,
     ...config,
     manifest: path.resolve(
@@ -160,17 +161,48 @@ export async function generateTranslationTags(
       });
     });
 
-    // Write language file only if it doesn't exist
-    if (!fs.existsSync(langFile)) {
-      fs.writeFileSync(
-        langFile,
-        JSON.stringify(translations, null, 2),
-        "utf-8"
-      );
-      console.log(`🌐 Created language file: ${langFile}`);
-    } else if (config.verbose) {
-      console.log(`ℹ️ Language file already exists: ${langFile}`);
+    // Use the new exportTranslations function
+    exportTranslations(langFile, translations, true);
+    console.log(`🌐 Updated language file: ${langFile}`);
+
+    // Also create a README.md with instructions for the locales directory if it doesn't exist
+    const readmePath = path.join(localesDir, "README.md");
+    if (!fs.existsSync(readmePath)) {
+      const readmeContent = `# Translation Files
+
+This directory contains the translation files for your application.
+
+## Usage
+
+To use these translations in your React components:
+
+\`\`\`jsx
+// Import the translation function
+import { useTranslation } from 'your-translation-library'; // e.g., react-i18next
+
+function MyComponent() {
+  // Initialize the translation function
+  const { t } = useTranslation();
+
+  return (
+    <div>
+      <h1>{t('unique_key_1')}</h1>
+      <p>{t('unique_key_2')}</p>
+    </div>
+  );
+}
+\`\`\`
+
+## Adding New Languages
+
+To add a new language, create a new JSON file with the language code as the filename, for example \`fr.json\` for French.
+Copy the content from \`${config.defaultLanguage || "en"}.json\` and translate the values.
+`;
+      
+      fs.writeFileSync(readmePath, readmeContent, "utf-8");
+      console.log(`📘 Created README for translations: ${readmePath}`);
     }
+    
   } catch (error) {
     console.error(
       `🚨 Translation generation failed: ${(error as Error).message}`

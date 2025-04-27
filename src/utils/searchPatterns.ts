@@ -1,7 +1,10 @@
 export const searchPatterns: RegExp[] = [
-  // HTML tags with multi-line support using [\s\S] instead of .
+  // HTML and JSX tags with multi-line support using [\s\S] instead of .
   /<(h1|h2|h3|h4|h5|h6|p|li|blockquote|span|label|strong|em|a|button|small|b|i)[^>]*>([\s\S]*?)<\/\1>/g,
 
+  // JSX component tags (capitalized first letter)
+  /<([A-Z][a-zA-Z]*)[^>]*>([\s\S]*?)<\/\1>/g,
+  
   // Shadcn components with multi-line support
   /<Card(Title|Description|Footer)[^>]*>([\s\S]*?)<\/Card\1>/g,
   /<Alert(Title|Description)[^>]*>([\s\S]*?)<\/Alert\1>/g,

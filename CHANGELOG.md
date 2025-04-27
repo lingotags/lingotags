@@ -2,7 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.0.2] - 2025-01-30
+## [1.0.3] - 2025-04-27
+
+### Added
+
+- **Updated Usage - React components with t() function:** Added support for translating React components using the t() function.
+
+## [1.0.2] - 2025-04-27
 
 ### Fixed
 
